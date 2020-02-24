@@ -130,58 +130,88 @@ void print_graph(Graph G) {
 	}
 }
 
-
-
 typedef struct Heap {
-	float* arr;
     int size;
     int breadth;
+    int* keys;
+	float* vals;
 } Heap;
 
 // return index of parent value in heap
-int parent(Heap H, int child_index) {
-	return child_index / H.breadth;
+int parent(Heap H, int child) {
+	return child / H.breadth;
 }
 
-// return index of specified child given parent index
-int child(Heap H, int parent_index, int child_index) {
-	return parent_index * H.breadth + child_index;
+// return index of specified child given parent index (return -1 if child does not exist)
+int child(Heap H, int parent, int child) {
+    int child_index = parent * H.breadth + child;
+    if (H.size - 1 < child_index)
+    {
+        return -1;
+    }
+    else
+    {
+        return child_index;
+    }
 }
 
 // reconstruct heap
-void heapify(Heap H, int parent_index) {
-	int smallest = parent_index;
+void min_heapify(Heap H, int parent) {
+	int smallest = parent;
 	for (int i = 0; i < H.breadth; i++)
 	{
-		child_index = child(H, parent_index, i);
-		if (H.arr[child] < H.arr[smallest])
+		int child_index = child(H, parent, i);
+        if (child_index == -1)
+        {
+            break;
+        }
+		if (H.vals[child_index] < H.vals[smallest])
 		{
-			smallest = child;
+			smallest = child_index;
 		}
 	}
 	if (smallest != parent)
 	{
+        float temp_val = H.vals[parent];
+        H.vals[parent] = H.vals[smallest];
+        H.vals[smallest] = temp_val;
 
+        int temp_key = H.keys[parent];
+        H.keys[parent] = H.keys[smallest];
+        H.keys[smallest] = temp_key;
+
+        min_heapify(H, smallest);
 	}
-
 }
 
-void delete_min() {
+Heap build_heap(int size, int breadth, int* keys, float* vals){
+    Heap H;
+    H.size = size;
+    H.breadth = breadth;
+    H.keys = keys;
+    H.vals = vals;
+    for (int i = size-1; i >= 0; i--)
+    {
+        min_heapify(H, i);
+    }
+    return H;
+}
 
+int delete_min(Heap H)
+{
+    H.size--;
+    min_key = H.keys[0]
+    H.keys[0], H.vals[0] = H.keys[H.size], H.vals[H.size];
+    min_heapify(H, 0);
+    return min_key;
 }
 
 void insert() {
 
 }
 
-Heap create_heap(int size, int breadth) {
-
-
-	return
-}
-
 int main(int argc, char** argv) {
-
+    /*
 	int input = atoi(argv[1]);
 	int numpoints = atoi(argv[2]);
 	int numtrials = atoi(argv[3]);
@@ -193,5 +223,42 @@ int main(int argc, char** argv) {
 
 	Graph G = rand_graph(numpoints, dimension);
 	print_graph(G);
+    */
+    int size = 16;
+    int breadth = 2;
+    int* keys = malloc(sizeof(int) * size);
+    float* vals = malloc(sizeof(float) * size);
+    for (int i = 0; i < size; i++)
+    {
+        keys[i] = i;
+        vals[i] = uniform();
+        printf("(Key, Value): (%i, %f)\n", keys[i], vals[i]);
+    }
+    Heap H = build_heap(size, breadth, keys, vals);
+    for (int i = 0; i < size; i++){
+        //printf("\nParent %i: %f\n", i, H.vals[i]);
+        for (int j = 0; j < breadth; j++)
+        {
+            int child_index = child(H, i, j);
+            if (child_index == -1)
+            {
+                break;
+            }
+            //printf("Child %i: %f\n", j, H.vals[child_index]);
+            if (H.vals[i] <= H.vals[child_index])
+            {
+                printf("Success! :D\n");
+            }
+            else
+            {
+                printf("Failure! D:\n");
+            }
+        }
+    }
+    for (int i = 0; i < size; i++)
+    {
+        printf("(Key, Value): (%i, %f)\n", H.keys[i], H.vals[i]);
+    }
+
 	return 0;
 }
