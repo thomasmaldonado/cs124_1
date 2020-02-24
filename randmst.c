@@ -6,9 +6,7 @@
 #include <time.h>
 #include <math.h>
 
-
-// structure for graph in adjancency matrix format
-// fully connected graph, so matrix is efficient
+#define MAX_INT 2147483647
 
 
 typedef struct Graph
@@ -130,11 +128,14 @@ void print_graph(Graph G) {
 	}
 }
 
+// define type Heap to include size of heap, breadth of each level, array of keys and values, along with array of pointers
+// to key locations for constant lookup time
 typedef struct Heap {
     int size;
     int breadth;
     int* keys;
 	float* vals;
+	float** ptrs;
 } Heap;
 
 // return index of parent value in heap
@@ -180,6 +181,10 @@ void min_heapify(Heap H, int parent) {
         H.keys[parent] = H.keys[smallest];
         H.keys[smallest] = temp_key;
 
+
+        H.ptrs[parent] = &H.vals[smallest];
+        H.ptrs[smallest] = &H.vals[parent];
+
         min_heapify(H, smallest);
 	}
 }
@@ -190,6 +195,11 @@ Heap build_heap(int size, int breadth, int* keys, float* vals){
     H.breadth = breadth;
     H.keys = keys;
     H.vals = vals;
+    H.ptrs = (float**) malloc(sizeof(int*) * size);
+    for (int i = 0; i < size; i++)
+    {
+    	H.ptrs[keys[i]] = &vals[i];
+    }
     for (int i = size-1; i >= 0; i--)
     {
         min_heapify(H, i);
@@ -200,16 +210,73 @@ Heap build_heap(int size, int breadth, int* keys, float* vals){
 int delete_min(Heap H)
 {
     H.size--;
-    min_key = H.keys[0]
+    int min_key = H.keys[0];
     H.keys[0], H.vals[0] = H.keys[H.size], H.vals[H.size];
     min_heapify(H, 0);
     return min_key;
 }
 
-void insert() {
+// insert a key-value pair into the heap
+//void insert(Heap H, int key, float val) {
+	// 
+	
+//}
 
+// implementation of Prim's alogorithm
+// returns total weight of the MST
+/*
+float prim(Graph G) {
+	// array of previous nodes and distances from tree to vertices
+	float* dist = (float*) malloc(sizeof(float) * G.n);
+	int* prev = (int*) malloc(sizeof(int) * G.n);
+	int* visited = (int*) malloc(sizeof(int) * G.n);
+	float total_weight = 0;
+
+	// initialize distance and visited values for every vertex
+	for (int i = 1; i < G.n; i++)
+	{
+		dist[i] = MAX_INT;
+		prev[i] = i;
+		visited[i] = 0;
+	}
+
+	// 
+	Heap H = build_heap(G.n, 2, , dist)
+
+	// initalize distance and visited values for starting vertex and start the heap
+	H.vals[0] = 0;
+	prev[0] = 0;
+	visited[0] = 1;
+	insert(H, 0, 0);
+
+	int i = 0;
+	while (H.size > 0)
+	{
+		// pop off nearest vertex v and commit it to the MST
+		// then mark it as already in the tree
+		int v = delete_min(H);
+		visited[v] = 0;
+		total_weight += dist[v];
+		// get every vertex not already in the tree, and
+		// check every vertex connected to v
+		for (int w = 0; w < G.n; w++)
+		{
+			// only look at vertices not already in the MST
+			if (!visited[w])
+			{
+				weight = weight(G, v, w);
+				if (dist[w] > weight)
+				{
+					dist[w] = weight;
+					prev[w] = v;
+					insert(H, w, weight);
+				}
+			}
+		}
+	}
+	return total_weight;
 }
-
+*/
 int main(int argc, char** argv) {
     /*
 	int input = atoi(argv[1]);
@@ -224,17 +291,27 @@ int main(int argc, char** argv) {
 	Graph G = rand_graph(numpoints, dimension);
 	print_graph(G);
     */
+
     int size = 16;
     int breadth = 2;
     int* keys = malloc(sizeof(int) * size);
     float* vals = malloc(sizeof(float) * size);
+
     for (int i = 0; i < size; i++)
     {
         keys[i] = i;
         vals[i] = uniform();
         printf("(Key, Value): (%i, %f)\n", keys[i], vals[i]);
     }
+
     Heap H = build_heap(size, breadth, keys, vals);
+
+    printf("\n\nPointer check:\n\n");
+    for (int i = 0; i < size; i++)
+    {
+    	printf("(Key, Value): %i, %f\n", keys[i], *H.ptrs[i]);
+    }
+
     for (int i = 0; i < size; i++){
         //printf("\nParent %i: %f\n", i, H.vals[i]);
         for (int j = 0; j < breadth; j++)
@@ -258,6 +335,12 @@ int main(int argc, char** argv) {
     for (int i = 0; i < size; i++)
     {
         printf("(Key, Value): (%i, %f)\n", H.keys[i], H.vals[i]);
+    }
+
+    printf("Pointer check:\n\n");
+    for (int i = 0; i < size; i++)
+    {
+    	printf("Value %f\n", *H.ptrs[i]);
     }
 
 	return 0;
