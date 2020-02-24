@@ -1,8 +1,8 @@
 // CS 124 Programming Assignment 1
 // Kelechi Ukah and Thomas Maldonado
 
-#include <stdio.h> 
-#include <stdlib.h> 
+#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <math.h>
 
@@ -34,9 +34,43 @@ float* rand_vertex(int dim) {
 	return vertex;
 }
 
-// calculate the position in the list of edges given 
+Graph rand_graph(int n, int dim) {
+    if (dim < 0)
+    {
+        printf("Warning: dimension %i < 0. Reassigned to dimension 0. You should probably change the number of dimensions. I think it's a good idea. What do you think?\n", dim);
+        dim = 0;
+    }
+
+    Graph G;
+    G.n = n;
+    G.dim = dim;
+
+    if (dim == 0)
+    {
+        int m = (n*n - n)/2;
+        float* edges = (float*) malloc(m * sizeof(float)); // initialize a space of n_choose_2 edge values
+
+        for (int i = 0; i < m; i++)
+        {
+            edges[i] = uniform();
+        }
+        G.edges = edges;
+    }
+    else
+    {
+        float** vertices = (float**)malloc(sizeof(float) * dim * n);
+        for(int i = 0; i < n; i++)
+        {
+            vertices[i] = rand_vertex(dim);
+        }
+        G.vertices = vertices;
+    }
+    return G;
+}
+
+// calculate the position in the list of edges given
 int get_index(int a, int b, int n) {
-	// swap so that a < b 
+	// swap so that a < b
 	// to be consistent in finding location in list of edges
 	if (a > b)
 	{
@@ -95,39 +129,7 @@ void print_graph(Graph G) {
 	}
 }
 
-Graph rand_graph(int n, int dim) {
-	if (dim < 0)
-	{
-		printf("Warning: dimension %i < 0. Reassigned to dimension 0. You should probably change the number of dimensions. I think it's a good idea. What do you think?\n", dim);
-		dim = 0;
-	}
 
-	Graph G;
-	G.n = n;
-	G.dim = dim;
-
-	if (dim == 0)
-	{
-		int m = (n*n - n)/2; 
-		float* edges = (float*) malloc(m * sizeof(float)); // initialize a space of n_choose_2 edge values
-
-		for (int i = 0; i < m; i++)
-		{
-			edges[i] = uniform();
-		}
-		G.edges = edges;
-	}
-	else
-	{
-		float** vertices = (float**)malloc(sizeof(float) * dim * n);
-		for(int i = 0; i < n; i++)
-		{
-			vertices[i] = rand_vertex(dim);
-		}
-		G.vertices = vertices;
-	}
-	return G;
-}
 
 int main(int argc, char** argv) {
 
