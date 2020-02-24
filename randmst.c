@@ -104,6 +104,7 @@ float weight(Graph G, int u, int v) {
 	}
 }
 
+// print everything relevant to the graph
 void print_graph(Graph G) {
 	for (int i = 0; i < G.n; i++)
 	{
@@ -130,6 +131,54 @@ void print_graph(Graph G) {
 }
 
 
+
+typedef struct Heap {
+	float* arr;
+    int size;
+    int breadth;
+} Heap;
+
+// return index of parent value in heap
+int parent(Heap H, int child_index) {
+	return child_index / H.breadth;
+}
+
+// return index of specified child given parent index
+int child(Heap H, int parent_index, int child_index) {
+	return parent_index * H.breadth + child_index;
+}
+
+// reconstruct heap
+void heapify(Heap H, int parent_index) {
+	int smallest = parent_index;
+	for (int i = 0; i < H.breadth; i++)
+	{
+		child_index = child(H, parent_index, i);
+		if (H.arr[child] < H.arr[smallest])
+		{
+			smallest = child;
+		}
+	}
+	if (smallest != parent)
+	{
+
+	}
+
+}
+
+void delete_min() {
+
+}
+
+void insert() {
+
+}
+
+Heap create_heap(int size, int breadth) {
+
+
+	return
+}
 
 int main(int argc, char** argv) {
 
