@@ -22,6 +22,25 @@ float uniform() {
 	return (float) rand() / RAND_MAX;
 }
 
+// swap two integers with addresses given by ptr1, ptr2
+void swap(int* ptr1, int* ptr2) {
+	int temp = *ptr1;
+	*ptr1 = *ptr2;
+	*ptr2 = temp;
+	return;
+}
+
+// helper function to create an array of consecutive integers
+// use for creating labels
+int* range(int max) {
+	int* range = (int*) malloc(sizeof(int) * max);
+	for (int i = 0; i < max; i++)
+	{
+		range[i] = i;
+	}
+	return range;
+}
+
 // generate a random vertex given an integer number of dimensions
 float* rand_vertex(int dim) {
 	float* vertex = (float*)malloc(sizeof(float) * dim);
@@ -72,9 +91,7 @@ int get_index(int a, int b, int n) {
 	// to be consistent in finding location in list of edges
 	if (a > b)
 	{
-		a = a + b;
-		b = a - b;
-		a = a - b;
+		swap(&a, &b);
 	}
 	return a*n - (a*(a-1)/2) + b - 2*a - 1;
 }
@@ -128,105 +145,214 @@ void print_graph(Graph G) {
 	}
 }
 
-// define type Heap to include size of heap, breadth of each level, array of keys and values, along with array of pointers
-// to key locations for constant lookup time
+
+/*
+define type Heap to include size of heap, breadth of each level, array of
+indices and values, and label/value pairs for constant lookup time
+
+_pos: location in heap
+labels[_pos]: label of the vertex at specified location in heap
+	label locations are changing a lot
+vals[label]: value associated with the label of the vertex at specified location in heap
+	values for a given label don't move
+*/
+
 typedef struct Heap {
     int size;
     int breadth;
-    int* keys;
-	float* vals;
-	float** ptrs;
+    int* labels; // labels[i] := label of the i^th element in the heap
+	float* vals; // values[j] := the value associated with the label j
+	int* pos; // position[k] := the position in the heap of the label k
 } Heap;
 
-// return index of parent value in heap
-int parent(Heap H, int child) {
-	return child / H.breadth;
+void print_heap(Heap* H){
+	printf("Size: %i\n", H -> size);
+	printf("Breadth: %i\n", H -> breadth);
+	printf("Labels: [ ");
+	for(int i = 0; i < H -> size; i++)
+	{
+		printf("%i ", H -> labels[i]);
+	}
+	printf("]\n");
+	printf("Values: [ ");
+	for(int i = 0; i < H -> size; i++)
+	{
+		printf("%f ", H -> vals[i]);
+	}
+	printf("]\n");
+	printf("Positions: [ ");
+	for(int i = 0; i < H -> size; i++)
+	{
+		printf("%i ", H -> pos[i]);
+	}
+	printf("]\n\n");
+	
 }
 
-// return index of specified child given parent index (return -1 if child does not exist)
-int child(Heap H, int parent, int child) {
-    int child_index = parent * H.breadth + child;
-    if (H.size - 1 < child_index)
+// return parent_pos of a child in heap
+int get_parent_pos(Heap* H, int child_pos) {
+	if (child_pos == 0)
+	{
+		return -1;
+	}
+	else
+	{
+		return child_pos / H -> breadth;
+	}
+}
+
+// return index of specified child given index of its parent 
+// (return -1 if child does not exist)
+int get_child_pos(Heap* H, int parent_pos, int relative_child_pos) {
+    int child_pos = parent_pos * H -> breadth + relative_child_pos + 1;
+    if (H -> size <= child_pos)
     {
         return -1;
     }
     else
     {
-        return child_index;
+        return child_pos;
     }
+}
+
+void heap_swap(Heap* H, int pos_1, int pos_2) {
+	int label_1 = H -> labels[pos_1];
+	int label_2 = H -> labels[pos_2];
+	swap(&H -> labels[pos_1], &H -> labels[pos_2]);
+	return;
 }
 
 // reconstruct heap
-void min_heapify(Heap H, int parent) {
-	int smallest = parent;
-	for (int i = 0; i < H.breadth; i++)
+void min_heapify(Heap* H, int parent_pos) {
+	int min_pos = parent_pos;
+	int child_pos;
+	for (int i = 0; i < H -> breadth; i++)
 	{
-		int child_index = child(H, parent, i);
-        if (child_index == -1)
+		child_pos = get_child_pos(H, parent_pos, i);
+        if (child_pos == -1)
         {
             break;
         }
-		if (H.vals[child_index] < H.vals[smallest])
+		if (H -> vals[H -> labels[child_pos]] < H -> vals[H -> labels[min_pos]])
 		{
-			smallest = child_index;
+			min_pos = child_pos;
 		}
 	}
-	if (smallest != parent)
+
+	if (min_pos != parent_pos)
 	{
-        float temp_val = H.vals[parent];
-        H.vals[parent] = H.vals[smallest];
-        H.vals[smallest] = temp_val;
-
-        int temp_key = H.keys[parent];
-        H.keys[parent] = H.keys[smallest];
-        H.keys[smallest] = temp_key;
-
-
-        H.ptrs[parent] = &H.vals[smallest];
-        H.ptrs[smallest] = &H.vals[parent];
-
-        min_heapify(H, smallest);
+		// swap locations of the labels in the heap
+		heap_swap(H, parent_pos, min_pos);
+        min_heapify(H, min_pos);
 	}
+	return;
 }
 
-Heap build_heap(int size, int breadth, int* keys, float* vals){
+// build a heap with the given parameters
+Heap build_heap(float* vals, int size, int breadth) {
     Heap H;
     H.size = size;
     H.breadth = breadth;
-    H.keys = keys;
+    H.labels = range(H.size);
     H.vals = vals;
-    H.ptrs = (float**) malloc(sizeof(int*) * size);
-    for (int i = 0; i < size; i++)
+    H.pos = H.labels;
+    print_heap(&H);
+    // bottom-up reconstruction
+    for (int i = H.size - 1; i >= 0; i--) // H.size / 2 perhaps
     {
-    	H.ptrs[keys[i]] = &vals[i];
-    }
-    for (int i = size-1; i >= 0; i--)
-    {
-        min_heapify(H, i);
+        min_heapify(&H, i);
     }
     return H;
 }
 
-int delete_min(Heap H)
-{
-    H.size--;
-    int min_key = H.keys[0];
-    H.keys[0], H.vals[0] = H.keys[H.size], H.vals[H.size];
+// return the label of the minimum element at the head of the heap
+int delete_min(Heap* H) {
+	printf("Size: %i\n", H -> size);
+
+    H -> size--;
+
+    int min_pos = 0;
+    int min_label = H -> labels[min_pos];
+    int last_pos = H -> size;
+    int last_label = H -> labels[last_pos];
+    
+    // move the last element in the heap to the top before re-heapification
+    // move the first (min) element to the end of heap for consistency
+    H -> labels[min_pos] = last_label;
+    H -> pos[min_label] = last_pos;
+    H -> labels[last_pos] = min_label;
+    H -> pos[last_label] = min_pos;
+
     min_heapify(H, 0);
-    return min_key;
+    return min_label;
 }
 
-// insert a key-value pair into the heap
-//void insert(Heap H, int key, float val) {
-	// 
-	
-//}
+// insert a label-value pair into the heap
+void insert(Heap* H, int insert_label, float insert_val) {
+	// don't do anything if current value is smaller than value you're trying to insert
+	if (H -> vals[insert_label] <= insert_val)
+	{
+		return;
+	}
+	// update value
+	H -> vals[insert_label] = insert_val;
+	int insert_pos = H -> pos[insert_label];
+
+    // bottom-up reconstruction from insertion position
+    int parent_pos = get_parent_pos(H, insert_pos);
+    int parent_label = H -> labels[parent_pos];
+    int parent_val = H -> vals[parent_label];
+    while (parent_val > insert_val && parent_pos != -1)
+    {
+    	// swap position and label values while necessary
+    	heap_swap(H, parent_pos, insert_pos);
+    	insert_pos = H -> pos[insert_label];
+    	parent_pos = get_parent_pos(H, insert_pos);
+		parent_label = H -> labels[parent_pos];
+		parent_val = H -> vals[parent_label];
+    }
+    return;
+}
+
+int is_min_heap(Heap* H)
+{
+	int parent_pos;
+	int parent_label;
+	int parent_val;
+	int child_pos;
+	int child_label;
+	int child_val;
+	for(int i = 0; i < H -> size; i++)
+	{
+		parent_label = i;
+		parent_pos = H -> pos[parent_label];
+		parent_val = H -> vals[parent_label];
+		for(int j = 0; j < H -> breadth; j++){
+			child_pos = get_child_pos(H, parent_pos, j);
+			if (child_pos == -1)
+			{
+				break;
+			}
+			child_label = H -> labels[child_pos];
+			child_val = H -> vals[child_label];
+			if (child_val  < parent_val)
+			{
+				print_heap(H);
+				printf("nope! \n\n\n\n\n\n\n\n");
+				return 0;
+			}
+		}
+
+
+
+	}
+	return 1;
+}
 
 // implementation of Prim's alogorithm
 // returns total weight of the MST
-/*
 float prim(Graph G) {
-	// array of previous nodes and distances from tree to vertices
+	// intialize arrays of previous nodes and distances from tree to vertices
 	float* dist = (float*) malloc(sizeof(float) * G.n);
 	int* prev = (int*) malloc(sizeof(int) * G.n);
 	int* visited = (int*) malloc(sizeof(int) * G.n);
@@ -239,9 +365,9 @@ float prim(Graph G) {
 		prev[i] = i;
 		visited[i] = 0;
 	}
-
-	// 
-	Heap H = build_heap(G.n, 2, , dist)
+-1
+	// initialize heap
+	Heap H = build_heap(G.n, 2, range(G.n), dist)
 
 	// initalize distance and visited values for starting vertex and start the heap
 	H.vals[0] = 0;
@@ -276,72 +402,34 @@ float prim(Graph G) {
 	}
 	return total_weight;
 }
-*/
+
 int main(int argc, char** argv) {
-    /*
 	int input = atoi(argv[1]);
 	int numpoints = atoi(argv[2]);
 	int numtrials = atoi(argv[3]);
 	int dimension = atoi(argv[4]);
+    int breadth = 2;
+    float * vals = (float*) malloc(numpoints * sizeof(float));
 
 	// random seed generator
 	int seed = time(NULL);
 	srand(seed);
 
-	Graph G = rand_graph(numpoints, dimension);
-	print_graph(G);
-    */
-
-    int size = 16;
-    int breadth = 2;
-    int* keys = malloc(sizeof(int) * size);
-    float* vals = malloc(sizeof(float) * size);
-
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < numpoints; i++)
     {
-        keys[i] = i;
-        vals[i] = uniform();
-        printf("(Key, Value): (%i, %f)\n", keys[i], vals[i]);
+    	vals[i] = uniform();
     }
 
-    Heap H = build_heap(size, breadth, keys, vals);
+	// generate random graph
+	// Graph G = rand_graph(numpoints, dimension);
+	// print_graph(G);
 
-    printf("\n\nPointer check:\n\n");
-    for (int i = 0; i < size; i++)
-    {
-    	printf("(Key, Value): %i, %f\n", keys[i], *H.ptrs[i]);
-    }
 
-    for (int i = 0; i < size; i++){
-        //printf("\nParent %i: %f\n", i, H.vals[i]);
-        for (int j = 0; j < breadth; j++)
-        {
-            int child_index = child(H, i, j);
-            if (child_index == -1)
-            {
-                break;
-            }
-            //printf("Child %i: %f\n", j, H.vals[child_index]);
-            if (H.vals[i] <= H.vals[child_index])
-            {
-                printf("Success! :D\n");
-            }
-            else
-            {
-                printf("Failure! D:\n");
-            }
-        }
-    }
-    for (int i = 0; i < size; i++)
-    {
-        printf("(Key, Value): (%i, %f)\n", H.keys[i], H.vals[i]);
-    }
+	// generate heap
+    Heap H = build_heap(vals, numpoints, breadth);
+    print_heap(&H); 
 
-    printf("Pointer check:\n\n");
-    for (int i = 0; i < size; i++)
-    {
-    	printf("Value %f\n", *H.ptrs[i]);
-    }
+    printf("Is min heap? %i \n", is_min_heap(&H));
 
 	return 0;
 }
