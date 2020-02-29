@@ -6,9 +6,6 @@
 #include <time.h>
 #include <math.h>
 
-#define MAX_INT 2147483647
-
-
 typedef struct Graph
 {
 	int n;
@@ -98,17 +95,17 @@ int get_index(int a, int b, int n) {
 
 // for dim > 0:
 // calculate weight between vertices u and v
-float weight(Graph G, int u, int v) {
-	int dim = G.dim;
+float get_weight(Graph* G, int u, int v) {
+	int dim = G -> dim;
 	if (dim == 0)
 	{
-		int index = get_index(u, v, G.n);
-		return G.edges[index];
+		int index = get_index(u, v, G -> n);
+		return G -> edges[index];
 	}
 	else
 	{
-		float* u_point = G.vertices[u];
-		float* v_point = G.vertices[v];
+		float* u_point = G -> vertices[u];
+		float* v_point = G -> vertices[v];
 		float dist = 0;
 		// implement distance formula
 		for (int i = 0; i < dim; i++)
@@ -119,45 +116,45 @@ float weight(Graph G, int u, int v) {
 	}
 }
 
-// print everything relevant to the graph
-void print_graph(Graph G) {
-	for (int i = 0; i < G.n; i++)
+float max_weight(Graph* G){
+	int d = G -> dim;
+	if (d == 0){
+		return 1.0;
+	}
+	else
 	{
-		for (int j = i+1; j < G.n; j++)
+		return sqrt((float) d);
+	}
+
+}
+
+// print everything relevant to the graph
+void print_graph(Graph* G) {
+	for (int i = 0; i < G -> n; i++)
+	{
+		for (int j = i+1; j < G -> n; j++)
 		{
-			if (G.dim > 0)
-			{
-				printf("Coordinates of %i:\n( ", i);
-				for (int k = 0; k < G.dim; k++)
-				{
-					printf("%f ", G.vertices[i][k]);
-				}
-				printf(")\n");
-				printf("Coordinates of %i:\n( ", j);
-				for (int k = 0; k < G.dim; k++)
-				{
-					printf("%f ", G.vertices[j][k]);
-				}
-				printf(")\n");
-			}
-			printf("Weight between (%i, %i): %f\n\n", i, j, weight(G, i, j));
+			printf("Weight between (%i, %i): %f\n", i, j, get_weight(G, i, j));
 		}
 	}
 }
 
 
-/*
-define type Heap to include size of heap, breadth of each level, array of
-indices and values, and label/value pairs for constant lookup time
+// ----
+// heap implementation
 
-_pos: location in heap
-labels[_pos]: label of the vertex at specified location in heap
-	label locations are changing a lot
-vals[label]: value associated with the label of the vertex at specified location in heap
-	values for a given label don't move
-*/
 
 typedef struct Heap {
+	/*
+	define type Heap to include size of heap, breadth of each level, array of
+	indices and values, and label/value pairs for constant lookup time
+
+	_pos: location in heap
+	labels[_pos]: label of the vertex at specified location in heap
+		label locations are changing a lot
+	vals[label]: value associated with the label of the vertex at specified location in heap
+		values for a given label don't move
+	*/
     int size;
     int breadth;
     int* labels; // labels[i] := label of the i^th element in the heap
@@ -180,12 +177,14 @@ void print_heap(Heap* H){
 		printf("%f ", H -> vals[i]);
 	}
 	printf("]\n");
+	/*
 	printf("Positions: [ ");
 	for(int i = 0; i < H -> size; i++)
 	{
 		printf("%i ", H -> pos[i]);
 	}
 	printf("]\n\n");
+	*/
 	
 }
 
@@ -215,6 +214,7 @@ int get_child_pos(Heap* H, int parent_pos, int relative_child_pos) {
     }
 }
 
+// helper function to swap nodes in a heap
 void heap_swap(Heap* H, int pos_1, int pos_2) {
 	int label_1 = H -> labels[pos_1];
 	int label_2 = H -> labels[pos_2];
@@ -256,7 +256,6 @@ Heap build_heap(float* vals, int size, int breadth) {
     H.labels = range(H.size);
     H.vals = vals;
     H.pos = H.labels;
-    print_heap(&H);
     // bottom-up reconstruction
     for (int i = H.size - 1; i >= 0; i--) // H.size / 2 perhaps
     {
@@ -267,33 +266,30 @@ Heap build_heap(float* vals, int size, int breadth) {
 
 // return the label of the minimum element at the head of the heap
 int delete_min(Heap* H) {
-	printf("Size: %i\n", H -> size);
-
     H -> size--;
 
-    int min_pos = 0;
-    int min_label = H -> labels[min_pos];
+    int min_label = H -> labels[0];
     int last_pos = H -> size;
     int last_label = H -> labels[last_pos];
     
     // move the last element in the heap to the top before re-heapification
     // move the first (min) element to the end of heap for consistency
-    H -> labels[min_pos] = last_label;
-    H -> pos[min_label] = last_pos;
+    H -> labels[0] = last_label;
     H -> labels[last_pos] = min_label;
-    H -> pos[last_label] = min_pos;
-
     min_heapify(H, 0);
     return min_label;
 }
 
 // insert a label-value pair into the heap
 void insert(Heap* H, int insert_label, float insert_val) {
-	// don't do anything if current value is smaller than value you're trying to insert
-	if (H -> vals[insert_label] <= insert_val)
+	/*
+	this case where the insert value is worse than the current value
+	is handled by the call of insert() in prims()	if (H -> vals[insert_label] <= insert_val)
+
 	{
 		return;
-	}
+	} */
+
 	// update value
 	H -> vals[insert_label] = insert_val;
 	int insert_pos = H -> pos[insert_label];
@@ -349,87 +345,96 @@ int is_min_heap(Heap* H)
 	return 1;
 }
 
+void print_MST(int* prev, int size) {
+	for (int i = 0; i < size; i++)
+	{
+		printf("prev[%i]: %i\n", i, prev[i]);
+	}
+}
 // implementation of Prim's alogorithm
 // returns total weight of the MST
-float prim(Graph G) {
+int* prim(Graph* G, int breadth) {
 	// intialize arrays of previous nodes and distances from tree to vertices
-	float* dist = (float*) malloc(sizeof(float) * G.n);
-	int* prev = (int*) malloc(sizeof(int) * G.n);
-	int* visited = (int*) malloc(sizeof(int) * G.n);
+	float* dist = (float*) malloc(sizeof(float) * G -> n);
+	int* prev = (int*) malloc(sizeof(int) * G -> n);
+	int* in_MST = (int*) malloc(sizeof(int) * G -> n);
 	float total_weight = 0;
 
-	// initialize distance and visited values for every vertex
-	for (int i = 1; i < G.n; i++)
-	{
-		dist[i] = MAX_INT;
-		prev[i] = i;
-		visited[i] = 0;
-	}
--1
 	// initialize heap
-	Heap H = build_heap(G.n, 2, range(G.n), dist)
 
 	// initalize distance and visited values for starting vertex and start the heap
-	H.vals[0] = 0;
+	dist[0] = 0;
 	prev[0] = 0;
-	visited[0] = 1;
-	insert(H, 0, 0);
+	in_MST[0] = 1;
+	float max_dist = max_weight(G);
+	// initialize distance and visited values for every vertex
+	for (int i = 1; i < G -> n; i++)
+	{
+		dist[i] = max_dist;
+		prev[i] = i;
+		in_MST[i] = 0;
+	}
 
-	int i = 0;
+
+	Heap H = build_heap(dist, G -> n, breadth);
+
+	// move down the heap and update distances/add edges to MST accordingly
+	int v;
+	float weight;
 	while (H.size > 0)
 	{
 		// pop off nearest vertex v and commit it to the MST
-		// then mark it as already in the tree
-		int v = delete_min(H);
-		visited[v] = 0;
-		total_weight += dist[v];
-		// get every vertex not already in the tree, and
+		// then mark it as in MST and already in the MST
+		v = delete_min(&H);
+		printf("Adding %i on the tree...\n", v);
+		printf("prev[%i]:%i  |  ", v, prev[v]);
+		printf("dist[%i]: %f\n", v, H.vals[v]);
+		in_MST[v] = 1;
+		total_weight += H.vals[v];
+
+		// get every vertex v not already in the MST, and
 		// check every vertex connected to v
-		for (int w = 0; w < G.n; w++)
+		for (int w = 0; w < G -> n; w++)
 		{
 			// only look at vertices not already in the MST
-			if (!visited[w])
-			{
-				weight = weight(G, v, w);
-				if (dist[w] > weight)
+			if (! in_MST[w]){
+				weight = get_weight(G, v, w);
+				if (H.vals[w] > weight)
 				{
-					dist[w] = weight;
+					printf("Updating %i on the heap...\n", w);
 					prev[w] = v;
-					insert(H, w, weight);
+					insert(&H, w, weight);
+					// print_heap(&H);
 				}
 			}
 		}
 	}
-	return total_weight;
+	printf("Total weight of MST: %f\n\n", total_weight);
+	return prev;
 }
 
+
 int main(int argc, char** argv) {
-	int input = atoi(argv[1]);
+	int breadth = atoi(argv[1]);
 	int numpoints = atoi(argv[2]);
 	int numtrials = atoi(argv[3]);
 	int dimension = atoi(argv[4]);
-    int breadth = 2;
-    float * vals = (float*) malloc(numpoints * sizeof(float));
+	float* vals = (float*) malloc(numpoints * sizeof(float));
+	int min;
 
 	// random seed generator
 	int seed = time(NULL);
 	srand(seed);
 
-    for (int i = 0; i < numpoints; i++)
-    {
-    	vals[i] = uniform();
-    }
-
 	// generate random graph
-	// Graph G = rand_graph(numpoints, dimension);
-	// print_graph(G);
+	Graph G = rand_graph(numpoints, dimension);
+	print_graph(&G);
+
+	int* prev = (int*) malloc(G.n * sizeof(int));
+    prev = prim(&G, breadth);
 
 
-	// generate heap
-    Heap H = build_heap(vals, numpoints, breadth);
-    print_heap(&H); 
-
-    printf("Is min heap? %i \n", is_min_heap(&H));
-
+    printf("\n\n\n---MST---\n");
+    print_MST(prev, G.n);
 	return 0;
 }
