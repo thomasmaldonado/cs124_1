@@ -404,9 +404,6 @@ float prim(Graph* G, int breadth) {
 			}
 		}
 	}
-  free(dist);
-  free(prev);
-  free(in_MST);
 	return total_weight;
 }
 
@@ -436,8 +433,7 @@ int main(int argc, char** argv) {
 
   for(int n = 0; n < numpoints; n++){
     data[n] = mean_mst_weight(breadth, n, numtrials, dimension);
-    printf("%i : %f\n", n, data[n]);
-
+    printf("%i\n", n);
   }
 
 	return 0;
