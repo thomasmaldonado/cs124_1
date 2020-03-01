@@ -106,12 +106,16 @@ float get_weight(Graph* G, int u, int v) {
 	{
 		float* u_point = G -> vertices[u];
 		float* v_point = G -> vertices[v];
-		float dist = 0;
+		float dist = 0.0;
 		// implement distance formula
 		for (int i = 0; i < dim; i++)
 		{
 			dist += pow(u_point[i] - v_point[i], 2);
+
 		}
+    if(dist > dim){
+      printf("Bad distance: %f for dimension %i\n", dist, dim);
+    }
 		return sqrt(dist);
 	}
 }
@@ -139,11 +143,8 @@ void print_graph(Graph* G) {
 	}
 }
 
-
 // ----
 // heap implementation
-
-
 typedef struct Heap {
 	/*
 	define type Heap to include size of heap, breadth of each level, array of
@@ -177,17 +178,15 @@ void print_heap(Heap* H){
 		printf("%f ", H -> vals[i]);
 	}
 	printf("]\n");
-	/*
+
 	printf("Positions: [ ");
 	for(int i = 0; i < H -> size; i++)
 	{
 		printf("%i ", H -> pos[i]);
 	}
 	printf("]\n\n");
-	*/
-	
-}
 
+}
 // return parent_pos of a child in heap
 int get_parent_pos(Heap* H, int child_pos) {
 	if (child_pos == 0)
@@ -199,8 +198,7 @@ int get_parent_pos(Heap* H, int child_pos) {
 		return child_pos / H -> breadth;
 	}
 }
-
-// return index of specified child given index of its parent 
+// return index of specified child given index of its parent
 // (return -1 if child does not exist)
 int get_child_pos(Heap* H, int parent_pos, int relative_child_pos) {
     int child_pos = parent_pos * H -> breadth + relative_child_pos + 1;
@@ -219,6 +217,7 @@ void heap_swap(Heap* H, int pos_1, int pos_2) {
 	int label_1 = H -> labels[pos_1];
 	int label_2 = H -> labels[pos_2];
 	swap(&H -> labels[pos_1], &H -> labels[pos_2]);
+  swap(&H -> pos[label_1], &H -> pos[label_2]);
 	return;
 }
 
@@ -255,7 +254,7 @@ Heap build_heap(float* vals, int size, int breadth) {
     H.breadth = breadth;
     H.labels = range(H.size);
     H.vals = vals;
-    H.pos = H.labels;
+    H.pos = range(H.size);
     // bottom-up reconstruction
     for (int i = H.size - 1; i >= 0; i--) // H.size / 2 perhaps
     {
@@ -269,13 +268,13 @@ int delete_min(Heap* H) {
     H -> size--;
 
     int min_label = H -> labels[0];
-    int last_pos = H -> size;
-    int last_label = H -> labels[last_pos];
-    
+    //int last_pos = H -> size;
+    //int last_label = H -> labels[last_pos];
+    heap_swap(H, 0, H -> size);
     // move the last element in the heap to the top before re-heapification
     // move the first (min) element to the end of heap for consistency
-    H -> labels[0] = last_label;
-    H -> labels[last_pos] = min_label;
+    //H -> labels[0] = last_label;
+    //H -> labels[last_pos] = min_label;
     min_heapify(H, 0);
     return min_label;
 }
@@ -284,30 +283,33 @@ int delete_min(Heap* H) {
 void insert(Heap* H, int insert_label, float insert_val) {
 	/*
 	this case where the insert value is worse than the current value
-	is handled by the call of insert() in prims()	if (H -> vals[insert_label] <= insert_val)
+	is handled by the call of insert() in prims()*/
+
+  if (H -> vals[insert_label] <= insert_val)
 
 	{
+    printf("Warning: value increased, no change made");
 		return;
-	} */
+	}
 
 	// update value
 	H -> vals[insert_label] = insert_val;
 	int insert_pos = H -> pos[insert_label];
 
-    // bottom-up reconstruction from insertion position
-    int parent_pos = get_parent_pos(H, insert_pos);
-    int parent_label = H -> labels[parent_pos];
-    int parent_val = H -> vals[parent_label];
-    while (parent_val > insert_val && parent_pos != -1)
-    {
-    	// swap position and label values while necessary
-    	heap_swap(H, parent_pos, insert_pos);
-    	insert_pos = H -> pos[insert_label];
-    	parent_pos = get_parent_pos(H, insert_pos);
-		parent_label = H -> labels[parent_pos];
-		parent_val = H -> vals[parent_label];
-    }
-    return;
+  // bottom-up reconstruction from insertion position
+  int parent_pos = get_parent_pos(H, insert_pos);
+  int parent_label = H -> labels[parent_pos];
+  float parent_val = H -> vals[parent_label];
+  while (parent_val > insert_val && parent_pos != -1)
+  {
+  	// swap position and label values while necessary
+  	heap_swap(H, parent_pos, insert_pos);
+  	insert_pos = H -> pos[insert_label];
+  	parent_pos = get_parent_pos(H, insert_pos);
+	  parent_label = H -> labels[parent_pos];
+	  parent_val = H -> vals[parent_label];
+  }
+  return;
 }
 
 int is_min_heap(Heap* H)
@@ -333,8 +335,6 @@ int is_min_heap(Heap* H)
 			child_val = H -> vals[child_label];
 			if (child_val  < parent_val)
 			{
-				print_heap(H);
-				printf("nope! \n\n\n\n\n\n\n\n");
 				return 0;
 			}
 		}
@@ -353,7 +353,7 @@ void print_MST(int* prev, int size) {
 }
 // implementation of Prim's alogorithm
 // returns total weight of the MST
-int* prim(Graph* G, int breadth) {
+float prim(Graph* G, int breadth) {
 	// intialize arrays of previous nodes and distances from tree to vertices
 	float* dist = (float*) malloc(sizeof(float) * G -> n);
 	int* prev = (int*) malloc(sizeof(int) * G -> n);
@@ -386,9 +386,6 @@ int* prim(Graph* G, int breadth) {
 		// pop off nearest vertex v and commit it to the MST
 		// then mark it as in MST and already in the MST
 		v = delete_min(&H);
-		printf("Adding %i on the tree...\n", v);
-		printf("prev[%i]:%i  |  ", v, prev[v]);
-		printf("dist[%i]: %f\n", v, H.vals[v]);
 		in_MST[v] = 1;
 		total_weight += H.vals[v];
 
@@ -401,40 +398,48 @@ int* prim(Graph* G, int breadth) {
 				weight = get_weight(G, v, w);
 				if (H.vals[w] > weight)
 				{
-					printf("Updating %i on the heap...\n", w);
 					prev[w] = v;
 					insert(&H, w, weight);
-					// print_heap(&H);
 				}
 			}
 		}
 	}
-	printf("Total weight of MST: %f\n\n", total_weight);
-	return prev;
+  free(dist);
+  free(prev);
+  free(in_MST);
+	return total_weight;
 }
 
+float mean_mst_weight(int breadth, int numpoints, int numtrials, int dimension){
+  Graph G;
+  float MST_weight;
+  float mean_weight = 0;
+  for(int i = 0; i < numtrials; i++){
+    G = rand_graph(numpoints, dimension);
+    MST_weight = prim(&G, breadth);
+    mean_weight += MST_weight;
+  }
+  mean_weight = mean_weight / numtrials;
+  return mean_weight;
+}
 
 int main(int argc, char** argv) {
 	int breadth = atoi(argv[1]);
 	int numpoints = atoi(argv[2]);
 	int numtrials = atoi(argv[3]);
 	int dimension = atoi(argv[4]);
-	float* vals = (float*) malloc(numpoints * sizeof(float));
-	int min;
 
-	// random seed generator
 	int seed = time(NULL);
 	srand(seed);
 
-	// generate random graph
-	Graph G = rand_graph(numpoints, dimension);
-	print_graph(&G);
+  float* data = (float*) malloc(numpoints * sizeof(float));
 
-	int* prev = (int*) malloc(G.n * sizeof(int));
-    prev = prim(&G, breadth);
+  for(int n = 0; n < numpoints; n++){
+    data[n] = mean_mst_weight(breadth, n, numtrials, dimension);
+    printf("%i : %f\n", n, data[n]);
 
+  }
 
-    printf("\n\n\n---MST---\n");
-    print_MST(prev, G.n);
 	return 0;
 }
+
