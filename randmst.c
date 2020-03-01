@@ -407,11 +407,14 @@ float prim(Graph* G, int breadth) {
 	return total_weight;
 }
 
-float mean_mst_weight(int breadth, int numpoints, int numtrials, int dimension){
+float mean_mst_weight(int breadth, int numpoints, int numtrials, int dimension) {
   Graph G;
   float MST_weight;
   float mean_weight = 0;
+  int seed;
   for(int i = 0; i < numtrials; i++){
+	seed = time(NULL);
+	srand(seed);
     G = rand_graph(numpoints, dimension);
     MST_weight = prim(&G, breadth);
     mean_weight += MST_weight;
@@ -426,16 +429,7 @@ int main(int argc, char** argv) {
 	int numtrials = atoi(argv[3]);
 	int dimension = atoi(argv[4]);
 
-	int seed = time(NULL);
-	srand(seed);
-
-  float* data = (float*) malloc(numpoints * sizeof(float));
-
-  for(int n = 0; n < numpoints; n++){
-    data[n] = mean_mst_weight(breadth, n, numtrials, dimension);
-    printf("%i\n", n);
-  }
-
+	printf("%f\n", mean_mst_weight(breadth, numpoints, numtrials, dimension));
 	return 0;
 }
 
